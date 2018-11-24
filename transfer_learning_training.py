@@ -17,7 +17,6 @@ data_url = "http://storage.googleapis.com/download.tensorflow.org/models/incepti
 data_dir = './inception_5h/'
 file_path = os.path.join(data_dir, 'inception5h.zip')
 
-'''
 if not os.path.exists(file_path):
     # Check if the download directory exists, otherwise create it.
     if not os.path.exists(data_dir):
@@ -27,7 +26,7 @@ if not os.path.exists(file_path):
         local_file.write(urlopen(data_url).read())
     # Extract
     zipfile.ZipFile(file_path, mode="r").extractall(data_dir)
-'''
+
 path = os.path.join(data_dir, "tensorflow_inception_graph.pb")
 with tf.gfile.FastGFile(path, 'rb') as f:
     graph_def = tf.GraphDef()
@@ -37,9 +36,6 @@ with tf.gfile.FastGFile(path, 'rb') as f:
 with tf.device('/gpu:0'): #run the task on GPU
     (X_train, Y_train), (X_test, Y_test) = tf.keras.datasets.cifar100.load_data(label_mode='fine')
 
-    #run the follow block of codes if you wish to generate the latent vectors from the GoogLeNet, be advised that this will take about 1.5 hours.
-
-    '''
     #----------------------------------------------------------------------------------
     #run the training images through the GoogLeNet
     googlenet_input = sess.graph.get_tensor_by_name("input:0")
@@ -63,7 +59,7 @@ with tf.device('/gpu:0'): #run the task on GPU
     # remove the first element which is an all-zero array
     latent_vec = latent_vec[1:, :, :, :]
     # save the output vectors to a local machine
-    pickle.dump(latent_vec, open('inception_output.p', 'wb'))
+    pickle.dump(latent_vec[1:, :, :, :], open('inception_output.p', 'wb'))
 
     # repeat the same steps for the validation images
     googlenet_input = sess.graph.get_tensor_by_name("input:0")
@@ -88,13 +84,9 @@ with tf.device('/gpu:0'): #run the task on GPU
 
     #save the output vectors to a local machine
     pickle.dump(latent_vec_val, open('validation_output.p', 'wb'))
-    '''
+
     #--------------------------------------------------------------------------------------------------------
     #feed the output from GoogLeNet to a MLP model
-    latent_vec = pickle.load(open('inception_output.p', 'rb'))
-    latent_vec_val = pickle.load(open('validation_output.p', 'rb'))
-
-
     train_labels_ohe = one_hot(Y_train)
     filt_size = [3, 3]
 
@@ -107,7 +99,7 @@ with tf.device('/gpu:0'): #run the task on GPU
     transfer_model.compile(loss='categorical_crossentropy',
                   optimizer=keras.optimizers.Adam(lr=0.0001, decay=1e-6),
                   metrics=['accuracy'])
-    history = transfer_model.fit(latent_vec, train_labels_ohe, epochs=50, batch_size=250)
+    history = transfer_model.fit(latent_vec, train_labels_ohe, epochs=10, batch_size=250)
 
 #make prediction
 prediction_transfer = transfer_model.predict(latent_vec_val)
